@@ -2,138 +2,129 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Spotify Clone</title>
+  <title>GitHub Folder Music Player</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-
     body {
-      background-color: #121212;
-      color: #fff;
-      padding: 0;
-      margin: 0;
-    }
-
-    header {
-      background-color: #1db954;
-      padding: 15px 30px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    header h1 {
-      font-size: 24px;
-    }
-
-    #main {
+      background: #121212;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
       padding: 20px;
-      max-width: 1000px;
-      margin: auto;
     }
 
-    audio {
-      width: 100%;
-      margin: 20px 0;
+    h1 {
+      color: #1db954;
+      margin-bottom: 10px;
     }
 
     .controls {
+      margin: 20px;
       display: flex;
-      gap: 20px;
       justify-content: center;
-      margin: 10px 0 30px;
+      gap: 15px;
     }
 
-    .controls button {
+    button {
       background: #1db954;
-      color: #000;
       border: none;
-      padding: 10px 25px;
-      border-radius: 25px;
+      padding: 10px 20px;
+      border-radius: 20px;
       font-weight: bold;
+      color: black;
       cursor: pointer;
-      transition: 0.3s;
     }
 
-    .controls button:hover {
-      background: #18a844;
+    audio {
+      width: 80%;
+      margin: 20px 0;
     }
 
     .playlist {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
     }
 
-    .song-card {
-      background-color: #181818;
-      padding: 15px;
-      border-radius: 10px;
-      transition: 0.3s;
+    .song {
+      background: #181818;
+      padding: 10px 15px;
+      border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 0 5px #000;
-    }
-
-    .song-card:hover {
-      background-color: #282828;
-      transform: scale(1.03);
     }
 
     .active {
       border: 2px solid #1db954;
-      box-shadow: 0 0 15px #1db954;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>🎵 Spotify Clone</h1>
-  </header>
+  <h1>🎧 Auto GitHub Folder Player</h1>
+  <audio id="audio" controls></audio>
 
-  <div id="main">
-    <audio id="audio" controls></audio>
-
-    <div class="controls">
-      <button id="prevBtn">⏮ Prev</button>
-      <button id="nextBtn">⏭ Next</button>
-    </div>
-
-    <div id="playlist" class="playlist"></div>
+  <div class="controls">
+    <button id="prev">⏮ Prev</button>
+    <button id="play">▶️ Play</button>
+    <button id="pause">⏸ Pause</button>
+    <button id="next">⏭ Next</button>
   </div>
 
-  <script>
-    const songs = [
-      { name: "Track 1", file: "1.mp3" },
-      { name: "Track 2", file: "2.mp3" },
-      { name: "Track 3", file: "3.mp3" },
-      { name: "Track 4", file: "4.mp3" },
-    ];
+  <div id="playlist" class="playlist">Loading songs...</div>
 
+  <script>
+    const username = "yourusername";      // 🔁 change to your GitHub username
+    const repo = "yourrepo";              // 🔁 change to your repo name
+    const folder = "songs";               // 🔁 change to your folder name
+    const branch = "main";                // 🔁 if not main, change it
+
+    const apiURL = "https://api.github.com/repos/Ansh4044/chill-pill-project-2/contents/songs";
+    const playlist = document.getElementById('playlist');
     const audio = document.getElementById('audio');
-    const playlistDiv = document.getElementById('playlist');
-    const nextBtn = document.getElementById('nextBtn');
-    const prevBtn = document.getElementById('prevBtn');
+    const playBtn = document.getElementById('play');
+    const pauseBtn = document.getElementById('pause');
+    const nextBtn = document.getElementById('next');
+    const prevBtn = document.getElementById('prev');
+
+    let songs = [];
     let currentIndex = 0;
 
+    async function fetchSongs() {
+      try {
+        const res = await fetch(apiURL);
+        const data = await res.json();
+        songs = data.filter(item => item.name.endsWith('.mp3')).map(item => ({
+          name: item.name,
+          url: item.download_url
+        }));
+
+        buildPlaylist();
+        playSong(0);
+      } catch (err) {
+        playlist.innerHTML = "❌ Failed to load songs.";
+        console.error(err);
+      }
+    }
+
     function buildPlaylist() {
-      playlistDiv.innerHTML = '';
+      playlist.innerHTML = '';
       songs.forEach((song, index) => {
-        const card = document.createElement('div');
-        card.classList.add('song-card');
-        card.textContent = song.name;
-        card.onclick = () => playSong(index);
-        playlistDiv.appendChild(card);
+        const div = document.createElement('div');
+        div.className = 'song';
+        div.textContent = song.name;
+        div.onclick = () => playSong(index);
+        playlist.appendChild(div);
       });
     }
 
     function playSong(index) {
       currentIndex = index;
-      audio.src = songs[index].file;
+      audio.src = songs[index].url;
       audio.play();
 
-      const cards = playlistDiv.querySelectorAll('.song-card');
-      cards.forEach(c => c.classList.remove('active'));
-      if (cards[index]) cards[index].classList.add('active');
+      const items = playlist.querySelectorAll('.song');
+      items.forEach(item => item.classList.remove('active'));
+      if (items[index]) items[index].classList.add('active');
     }
 
     audio.addEventListener('ended', () => {
@@ -142,17 +133,17 @@
       }
     });
 
+    playBtn.onclick = () => audio.play();
+    pauseBtn.onclick = () => audio.pause();
     nextBtn.onclick = () => {
       if (currentIndex + 1 < songs.length) playSong(currentIndex + 1);
     };
-
     prevBtn.onclick = () => {
       if (currentIndex > 0) playSong(currentIndex - 1);
     };
 
-    // Initial build
-    buildPlaylist();
-    playSong(0); // Auto start first song
+    // Load on start
+    fetchSongs();
   </script>
 
 </body>
