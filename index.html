@@ -39,16 +39,17 @@
       z-index: 100;
     }
     .controls button {
-      background: #00b4d8;
+      background: #00b4d800;
       color: #fff;
       border: none;
       padding: 10px 20px;
       border-radius: 25px;
       cursor: pointer;
       font-weight: bold;
+      font-size: 20px;
       transition: background 0.3s;
     }
-    .controls button:hover { background: #48cae4; }
+    .controls button:hover { color: #48cae4; }
     .song-list-toggle, .search-bar, .playlist-builder {
       margin: 10px auto;
       text-align: center;
@@ -102,13 +103,30 @@
       .song { min-width: 100px; font-size: 14px; }
       .controls button { padding: 8px 14px; font-size: 14px; }
     }
+
+    .open-list {
+      background: #00b4d85b;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 15px;
+      transition: background 0.3s;
+    }
+
+    .open-list:hover {
+      background: #00b4d8;
+      color: #f7f7f7;
+    }
   </style>
 </head>
 <body>
-  <h1>#chill-pill-project-2 🎧</h1>
+  <h1>Eatify</h1>
 
   <div class="song-list-toggle">
-    <button onclick="togglePlaylist()">🎵 Open Queue</button>
+    <button class="open-list" onclick="togglePlaylist()">Open List</button>
   </div>
 
   <div class="search-bar">
@@ -125,11 +143,11 @@
   <div id="playlist" class="playlist">Loading songs...</div>
 
   <div class="controls">
-    <button id="prev">⏮ Prev</button>
-    <button id="shuffle">🔀 Shuffle</button>
-    <button id="play">▶️ Play</button>
-    <button id="pause">⏸ Pause</button>
-    <button id="next">⏭ Next</button>
+    <button id="prev">⏮</button>
+    <button id="shuffle">⇄</button>
+    <button id="play" style="display: none;">▶️</button>
+    <button id="pause"style="display: none;">⏸</button>
+    <button id="next">⏭</button>
   </div>
 
   <script>
