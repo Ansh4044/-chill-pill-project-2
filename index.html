@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spotify Clone</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+
+    body {
+      background-color: #121212;
+      color: #fff;
+      padding: 0;
+      margin: 0;
+    }
+
+    header {
+      background-color: #1db954;
+      padding: 15px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 24px;
+    }
+
+    #main {
+      padding: 20px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    audio {
+      width: 100%;
+      margin: 20px 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin: 10px 0 30px;
+    }
+
+    .controls button {
+      background: #1db954;
+      color: #000;
+      border: none;
+      padding: 10px 25px;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .controls button:hover {
+      background: #18a844;
+    }
+
+    .playlist {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .song-card {
+      background-color: #181818;
+      padding: 15px;
+      border-radius: 10px;
+      transition: 0.3s;
+      cursor: pointer;
+      box-shadow: 0 0 5px #000;
+    }
+
+    .song-card:hover {
+      background-color: #282828;
+      transform: scale(1.03);
+    }
+
+    .active {
+      border: 2px solid #1db954;
+      box-shadow: 0 0 15px #1db954;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎵 Spotify Clone</h1>
+  </header>
+
+  <div id="main">
+    <audio id="audio" controls></audio>
+
+    <div class="controls">
+      <button id="prevBtn">⏮ Prev</button>
+      <button id="nextBtn">⏭ Next</button>
+    </div>
+
+    <div id="playlist" class="playlist"></div>
+  </div>
+
+  <script>
+    const songs = [
+      { name: "Track 1", file: "1.mp3" },
+      { name: "Track 2", file: "2.mp3" },
+      { name: "Track 3", file: "3.mp3" },
+      { name: "Track 4", file: "4.mp3" },
+    ];
+
+    const audio = document.getElementById('audio');
+    const playlistDiv = document.getElementById('playlist');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    let currentIndex = 0;
+
+    function buildPlaylist() {
+      playlistDiv.innerHTML = '';
+      songs.forEach((song, index) => {
+        const card = document.createElement('div');
+        card.classList.add('song-card');
+        card.textContent = song.name;
+        card.onclick = () => playSong(index);
+        playlistDiv.appendChild(card);
+      });
+    }
+
+    function playSong(index) {
+      currentIndex = index;
+      audio.src = songs[index].file;
+      audio.play();
+
+      const cards = playlistDiv.querySelectorAll('.song-card');
+      cards.forEach(c => c.classList.remove('active'));
+      if (cards[index]) cards[index].classList.add('active');
+    }
+
+    audio.addEventListener('ended', () => {
+      if (currentIndex + 1 < songs.length) {
+        playSong(currentIndex + 1);
+      }
+    });
+
+    nextBtn.onclick = () => {
+      if (currentIndex + 1 < songs.length) playSong(currentIndex + 1);
+    };
+
+    prevBtn.onclick = () => {
+      if (currentIndex > 0) playSong(currentIndex - 1);
+    };
+
+    // Initial build
+    buildPlaylist();
+    playSong(0); // Auto start first song
+  </script>
+
+</body>
+</html>
