@@ -2,133 +2,233 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GitHub Folder Music Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>#chill-pill-project-2</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #121212;
-      color: white;
-      font-family: sans-serif;
-      text-align: center;
+      background: linear-gradient(135deg, #0d1b2a, #1b263b);
+      color: #f0f0f0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
       padding: 20px;
     }
-
     h1 {
-      color: #1db954;
-      margin-bottom: 10px;
+      color: #00b4d8;
+      font-size: 28px;
+      text-align: center;
+      margin-bottom: 20px;
     }
-
+    #audio {
+      width: 100%;
+      max-width: 600px;
+      margin: 10px auto;
+      display: block;
+    }
     .controls {
-      margin: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-    }
-
-    button {
-      background: #1db954;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-weight: bold;
-      color: black;
-      cursor: pointer;
-    }
-
-    audio {
-      width: 80%;
-      margin: 20px 0;
-    }
-
-    .playlist {
+      position: sticky;
+      bottom: 0;
+      background: #0d1b2a;
+      padding: 15px 10px;
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
       justify-content: center;
+      gap: 10px;
+      z-index: 100;
     }
-
+    .controls button {
+      background: #00b4d8;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .controls button:hover { background: #48cae4; }
+    .song-list-toggle, .search-bar, .playlist-builder {
+      margin: 10px auto;
+      text-align: center;
+    }
+    .search-bar input {
+      padding: 8px;
+      width: 80%;
+      max-width: 400px;
+      border-radius: 20px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+    .playlist {
+      display: none;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px auto;
+    }
+    .playlist.visible { display: flex; }
     .song {
-      background: #181818;
+      background: rgba(255, 255, 255, 0.05);
       padding: 10px 15px;
       border-radius: 8px;
       cursor: pointer;
+      min-width: 150px;
+      text-align: center;
+      transition: 0.3s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-
-    .active {
-      border: 2px solid #1db954;
+    .song:hover { background: rgba(255, 255, 255, 0.1); }
+    .song.active {
+      border: 2px solid #00b4d8;
+      background-color: rgba(0, 180, 216, 0.2);
+      font-weight: bold;
+    }
+    .song.selected { border: 2px solid #ffb703; }
+    .playlist-builder button {
+      background: #ffb703;
+      color: black;
+      border: none;
+      padding: 10px 25px;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    @media (max-width: 600px) {
+      .song { min-width: 100px; font-size: 14px; }
+      .controls button { padding: 8px 14px; font-size: 14px; }
     }
   </style>
 </head>
 <body>
+  <h1>#chill-pill-project-2 🎧</h1>
 
-  <h1>🎧 Auto GitHub Folder Player</h1>
+  <div class="song-list-toggle">
+    <button onclick="togglePlaylist()">🎵 Open Queue</button>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search songs..." oninput="filterSongs()">
+  </div>
+
+  <div class="playlist-builder">
+    <button onclick="toggleSelectionMode()">🎯 Select Songs</button>
+    <button onclick="createCustomPlaylist()">✅ Create Playlist</button>
+  </div>
+
   <audio id="audio" controls></audio>
+
+  <div id="playlist" class="playlist">Loading songs...</div>
 
   <div class="controls">
     <button id="prev">⏮ Prev</button>
+    <button id="shuffle">🔀 Shuffle</button>
     <button id="play">▶️ Play</button>
     <button id="pause">⏸ Pause</button>
     <button id="next">⏭ Next</button>
   </div>
 
-  <div id="playlist" class="playlist">Loading songs...</div>
-
   <script>
-    const username = "yourusername";      // 🔁 change to your GitHub username
-    const repo = "yourrepo";              // 🔁 change to your repo name
-    const folder = "songs";               // 🔁 change to your folder name
-    const branch = "main";                // 🔁 if not main, change it
-
-    const apiURL = "https://api.github.com/repos/Ansh4044/chill-pill-project-2/contents/songs";
-    const playlist = document.getElementById('playlist');
+    const apiURL = 'https://api.github.com/repos/Ansh4044/-chill-pill-project-2/contents/songs?ref=main';
     const audio = document.getElementById('audio');
+    const playlist = document.getElementById('playlist');
+    const searchInput = document.getElementById('searchInput');
     const playBtn = document.getElementById('play');
     const pauseBtn = document.getElementById('pause');
     const nextBtn = document.getElementById('next');
     const prevBtn = document.getElementById('prev');
+    const shuffleBtn = document.getElementById('shuffle');
 
-    let songs = [];
-    let currentIndex = 0;
+    let songs = [], filteredSongs = [], currentIndex = 0;
+    let selectionMode = false, selectedSongs = [];
 
     async function fetchSongs() {
-      try {
-        const res = await fetch(apiURL);
-        const data = await res.json();
-        songs = data.filter(item => item.name.endsWith('.mp3')).map(item => ({
-          name: item.name,
-          url: item.download_url
-        }));
-
-        buildPlaylist();
-        playSong(0);
-      } catch (err) {
-        playlist.innerHTML = "❌ Failed to load songs.";
-        console.error(err);
-      }
+      const res = await fetch(apiURL);
+      const data = await res.json();
+      songs = data.filter(file => file.name.endsWith('.mp3')).map(file => ({
+        name: file.name.replace('.mp3', ''),
+        url: file.download_url
+      }));
+      filteredSongs = [...songs];
+      buildPlaylist();
     }
 
     function buildPlaylist() {
       playlist.innerHTML = '';
-      songs.forEach((song, index) => {
+      filteredSongs.forEach((song, index) => {
         const div = document.createElement('div');
         div.className = 'song';
         div.textContent = song.name;
-        div.onclick = () => playSong(index);
+        div.onclick = () => {
+          if (selectionMode) {
+            div.classList.toggle('selected');
+            if (selectedSongs.includes(song)) {
+              selectedSongs = selectedSongs.filter(s => s !== song);
+            } else {
+              selectedSongs.push(song);
+            }
+          } else {
+            playSong(index);
+          }
+        };
         playlist.appendChild(div);
       });
     }
 
+    function togglePlaylist() {
+      playlist.classList.toggle('visible');
+    }
+
+    function filterSongs() {
+      const term = searchInput.value.toLowerCase();
+      filteredSongs = songs.filter(song => song.name.toLowerCase().includes(term));
+      buildPlaylist();
+    }
+
+    function toggleSelectionMode() {
+      selectionMode = !selectionMode;
+      selectedSongs = [];
+      buildPlaylist();
+    }
+
+    function createCustomPlaylist() {
+      if (selectedSongs.length > 0) {
+        filteredSongs = [...selectedSongs];
+        currentIndex = 0;
+        buildPlaylist();
+        playSong(0);
+        selectionMode = false;
+      }
+    }
+
     function playSong(index) {
       currentIndex = index;
-      audio.src = songs[index].url;
+      audio.src = filteredSongs[index].url;
       audio.play();
+      updateActive();
+    }
 
+    function updateActive() {
       const items = playlist.querySelectorAll('.song');
-      items.forEach(item => item.classList.remove('active'));
-      if (items[index]) items[index].classList.add('active');
+      items.forEach(el => el.classList.remove('active'));
+      if (items[currentIndex]) items[currentIndex].classList.add('active');
+    }
+
+    function shuffleSongs() {
+      for (let i = filteredSongs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [filteredSongs[i], filteredSongs[j]] = [filteredSongs[j], filteredSongs[i]];
+      }
+      buildPlaylist();
+      playSong(0);
     }
 
     audio.addEventListener('ended', () => {
-      if (currentIndex + 1 < songs.length) {
+      if (currentIndex + 1 < filteredSongs.length) {
         playSong(currentIndex + 1);
       }
     });
@@ -136,15 +236,14 @@
     playBtn.onclick = () => audio.play();
     pauseBtn.onclick = () => audio.pause();
     nextBtn.onclick = () => {
-      if (currentIndex + 1 < songs.length) playSong(currentIndex + 1);
+      if (currentIndex + 1 < filteredSongs.length) playSong(currentIndex + 1);
     };
     prevBtn.onclick = () => {
       if (currentIndex > 0) playSong(currentIndex - 1);
     };
+    shuffleBtn.onclick = () => shuffleSongs();
 
-    // Load on start
     fetchSongs();
   </script>
-
 </body>
 </html>
