@@ -240,11 +240,14 @@
 <body>
   <h1>
     <center>
-      <h5 style="margin: 0px; font-size: 20px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-weight: 100;">#chill-pill-project-2</h5>
+      <h5 style="margin: 0px; font-size: 20px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-weight: 100;">
+        #chill-pill-project-2</h5>
     </center>
     <h1 style="font-size: 40px;">Music Player</h1>
     <center>
-     <h5 style="margin: 0px 0px 10px 0px; font-size: 20px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-weight: 100;">By Ansh</h5>
+      <h5
+        style="margin: 0px 0px 10px 0px; font-size: 20px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-weight: 100;">
+        By Ansh</h5>
     </center>
   </h1>
 
@@ -289,8 +292,9 @@
   <canvas id="meteorCanvas"></canvas>
 
   <script>
-    const GITHUB_TOKEN = "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";
+    const GITHUB_TOKEN = "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";
     const GITHUB_API_URL = "https://api.github.com/repos/Ansh4044/-chill-pill-project-2/contents/songs";
+
 
     const uploadInput = document.getElementById("uploadInput");
     const dropzone = document.getElementById("dropzone");
@@ -454,23 +458,41 @@
     });
 
     async function uploadToGitHub(file) {
+      progressText.textContent = "Uploading...";
       const reader = new FileReader();
       reader.onload = async () => {
         const content = reader.result.split(",")[1];
-        const res = await fetch(`${GITHUB_API_URL}/${file.name}`, {
+        const uploadURL = `${GITHUB_API_URL}/${file.name}`;
+
+        const res = await fetch(uploadURL, {
           method: "PUT",
           headers: {
             Authorization: `token ${GITHUB_TOKEN}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ message: `Upload ${file.name}`, content })
+          body: JSON.stringify({
+            message: `Upload ${file.name}`,
+            content: content
+          })
         });
-        progressText.textContent = res.ok ? "Upload Complete!" : "Upload Failed!";
-        setTimeout(() => progressText.textContent = "", 1500);
-        if (res.ok) fetchSongs();
+
+        if (res.ok) {
+          progressText.textContent = "Upload Complete!";
+          fetchSongs();
+        } else {
+          const error = await res.json();
+          console.error("Upload failed:", error);
+          progressText.textContent = "Upload Failed!";
+        }
+
+        setTimeout(() => {
+          progressText.textContent = "";
+        }, 3000);
       };
+
       reader.readAsDataURL(file);
     }
+
 
     // Meteor shower
     const mCanvas = document.getElementById("meteorCanvas");
