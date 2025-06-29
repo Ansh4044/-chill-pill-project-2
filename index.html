@@ -457,41 +457,37 @@
       if (file?.name.endsWith(".mp3")) uploadToGitHub(file);
     });
 
-    async function uploadToGitHub(file) {
-      progressText.textContent = "Uploading...";
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const content = reader.result.split(",")[1];
-        const uploadURL = `${GITHUB_API_URL}/${file.name}`;
+   async function uploadToGitHub(file) {
+  progressText.textContent = "Uploading...";
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const fileContent = reader.result.split(",")[1];
 
-        const res = await fetch(uploadURL, {
-          method: "PUT",
-          headers: {
-            Authorization: `token ${GITHUB_TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            message: `Upload ${file.name}`,
-            content: content
-          })
-        });
+    const res = await fetch("/.netlify/functions/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileContent: fileContent
+      })
+    });
 
-        if (res.ok) {
-          progressText.textContent = "Upload Complete!";
-          fetchSongs();
-        } else {
-          const error = await res.json();
-          console.error("Upload failed:", error);
-          progressText.textContent = "Upload Failed!";
-        }
-
-        setTimeout(() => {
-          progressText.textContent = "";
-        }, 3000);
-      };
-
-      reader.readAsDataURL(file);
+    const data = await res.json();
+    if (res.ok) {
+      progressText.textContent = "Upload Complete!";
+      fetchSongs();
+    } else {
+      console.error("Upload failed:", data);
+      progressText.textContent = "Upload Failed! " + data.error;
     }
+
+    setTimeout(() => {
+      progressText.textContent = "";
+    }, 3000);
+  };
+
+  reader.readAsDataURL(file);
+}
 
 
     // Meteor shower
