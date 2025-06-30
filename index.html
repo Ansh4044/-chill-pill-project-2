@@ -192,7 +192,8 @@
 </head>
 
 <body>
-    <h1>Music Player<br>
+    <h1>
+        <span style="font-size: 0.5em; color: #ccc;">#Chill Pill Project 2</span><br>Music Player<br>
         <span style="font-size: 0.5em; color: #ccc;">By Ansh</span>
     </h1>
 
@@ -201,11 +202,11 @@
         <button onclick="createCustomPlaylist()" disabled>Create Playlist</button>
         <button onclick="shuffleSongs()">Shuffle All</button>
     </nav>
-    <center><a href="/upload">Upload</a></center>
+    <center><a href="upload.html">Upload</a></center>
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Search songs..." oninput="filterSongs()">
     </div>
-    
+
     <div id="playlist" class="playlist">Loading songs...</div>
 
     <audio id="audio" controls style="display:none;"></audio>

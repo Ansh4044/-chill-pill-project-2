@@ -54,6 +54,7 @@
       color: #ffb703;
       margin-top: 10px;
       animation: fadein 0.3s ease-in-out;
+      white-space: pre-line;
     }
 
     .progress-bar-container {
@@ -75,13 +76,8 @@
     }
 
     @keyframes fadein {
-      from {
-        opacity: 0
-      }
-
-      to {
-        opacity: 1
-      }
+      from { opacity: 0 }
+      to { opacity: 1 }
     }
 
     a {
@@ -92,7 +88,6 @@
       display: inline-block;
       border: 2px solid #ffb703;
       padding: 10px 20px;
-      border: 2px solid #ffb703;
       font-weight: bold;
       border-radius: 30px;
       margin-bottom: 40px;
@@ -139,10 +134,28 @@
     dropzone.addEventListener("drop", e => {
       e.preventDefault();
       dropzone.classList.remove("dragover");
-      uploadFiles(e.dataTransfer.files);
+      handleFiles(e.dataTransfer.files);
     });
 
-    uploadInput.addEventListener("change", e => uploadFiles(e.target.files));
+    uploadInput.addEventListener("change", e => handleFiles(e.target.files));
+
+    async function handleFiles(fileList) {
+      const files = Array.from(fileList);
+      let messageLog = "";
+      const validFiles = files.filter(file => {
+        if (file.type !== "audio/mpeg") {
+          messageLog = `\u274C ${file.name} is not an .mp3 file.\n`;
+          return false;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          messageLog = `\u274C ${file.name} is larger than 20MB.\n`;
+          return false;
+        }
+        return true;
+      });
+      progressText.textContent = messageLog;
+      if (validFiles.length > 0) uploadFiles(validFiles);
+    }
 
     async function uploadFiles(files) {
       const total = files.length;
@@ -157,11 +170,11 @@
           return;
         }
         if (existing.some(f => f.name === file.name)) {
-          progressText.textContent = `File '${file.name}' already exists.`;
+          progressText.textContent += `\u26A0\uFE0F File '${file.name}' already exists.\n`;
           continue;
         }
 
-        progressText.textContent = `${uploaded + 1}/${total} files uploading`;
+        progressText.textContent = `${uploaded + 1}/${total} files uploading...\n`;
 
         const { error } = await supabase.storage.from("songs").upload(file.name, file, {
           cacheControl: '3600',
@@ -169,7 +182,7 @@
         });
 
         if (error) {
-          progressText.textContent = `Failed to upload ${file.name}: ${error.message}`;
+          progressText.textContent += `\u274C Failed to upload ${file.name}: ${error.message}\n`;
           continue;
         }
 
@@ -180,13 +193,12 @@
         await new Promise(res => setTimeout(res, 300));
       }
 
-      progressText.textContent = `Upload complete!`;
+      progressText.textContent = `\n Upload complete!`;
       setTimeout(() => {
         progressBarContainer.style.display = "none";
         progressBar.style.width = "0%";
       }, 1500);
     }
-
 
     const canvas = document.getElementById("meteorCanvas");
     const ctx = canvas.getContext("2d");
@@ -194,7 +206,6 @@
     canvas.height = window.innerHeight;
 
     let meteors = [];
-
     function createMeteor() {
       return {
         x: Math.random() * canvas.width,
@@ -222,15 +233,11 @@
 
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (meteors.length < 15 && Math.random() < 0.2) {
-        meteors.push(createMeteor());
-      }
+      if (meteors.length < 15 && Math.random() < 0.2) meteors.push(createMeteor());
       meteors.forEach((m, i) => {
         updateMeteor(m);
         drawMeteor(m);
-        if (m.x > canvas.width || m.y > canvas.height) {
-          meteors.splice(i, 1);
-        }
+        if (m.x > canvas.width || m.y > canvas.height) meteors.splice(i, 1);
       });
       requestAnimationFrame(animate);
     }
