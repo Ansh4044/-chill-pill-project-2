@@ -277,17 +277,31 @@
             playIndex();
         }
 
+
         function playIndex() {
-            const song = playlistQueue[currentIndex];
-            const songEls = document.querySelectorAll(".song");
-            songEls.forEach(el => el.classList.remove("active"));
-            const el = Array.from(songEls).find(el => el.textContent === song.name);
-            el?.classList.add("active");
-            audio.src = song.url;
-            nowPlayingTitle.textContent = song.name;
-            audio.play();
-            togglePlayBtn.innerHTML = "||";
+    const song = playlistQueue[currentIndex];
+    const songEls = document.querySelectorAll(".song");
+    songEls.forEach(el => el.classList.remove("active"));
+    const el = Array.from(songEls).find(el => el.textContent === song.name);
+    el?.classList.add("active");
+
+    // 👇 Use caching playback instead of direct URL
+    playWithCache(song);
         }
+        
+
+        
+       // function playIndex() {
+          //  const song = playlistQueue[currentIndex];
+         //   const songEls = document.querySelectorAll(".song");
+         //   songEls.forEach(el => el.classList.remove("active"));
+          //  const el = Array.from(songEls).find(el => el.textContent === song.name);
+         //   el?.classList.add("active");
+           // audio.src = song.url;
+           // nowPlayingTitle.textContent = song.name;
+           // audio.play();
+          //  togglePlayBtn.innerHTML = "||";
+       // }
 
         function prevSong() {
             if (currentIndex > 0) currentIndex--;
@@ -377,6 +391,24 @@
             const q = document.getElementById("searchInput").value.toLowerCase();
             displaySongs(allSongs.filter(s => s.name.toLowerCase().includes(q)));
         }
+
+        async function playWithCache(song) {
+    const cacheKey = `song_${song.name}`;
+    let blobUrl = localStorage.getItem(cacheKey);
+
+    if (!blobUrl) {
+        const response = await fetch(song.url);
+        const blob = await response.blob();
+        blobUrl = URL.createObjectURL(blob);
+        localStorage.setItem(cacheKey, blobUrl);
+    }
+
+    audio.src = blobUrl;
+    nowPlayingTitle.textContent = song.name;
+    audio.play();
+    togglePlayBtn.innerHTML = "||";
+        }
+        
 
         fetchSongs();
         togglePlayBtn.innerHTML = "▶";
