@@ -279,29 +279,29 @@
 
 
         function playIndex() {
-    const song = playlistQueue[currentIndex];
-    const songEls = document.querySelectorAll(".song");
-    songEls.forEach(el => el.classList.remove("active"));
-    const el = Array.from(songEls).find(el => el.textContent === song.name);
-    el?.classList.add("active");
+            const song = playlistQueue[currentIndex];
+            const songEls = document.querySelectorAll(".song");
+            songEls.forEach(el => el.classList.remove("active"));
+            const el = Array.from(songEls).find(el => el.textContent === song.name);
+            el?.classList.add("active");
 
-    // 👇 Use caching playback instead of direct URL
-    playWithCache(song);
+            // 👇 Use caching playback instead of direct URL
+            playWithCache(song);
         }
-        
 
-        
-       // function playIndex() {
-          //  const song = playlistQueue[currentIndex];
-         //   const songEls = document.querySelectorAll(".song");
-         //   songEls.forEach(el => el.classList.remove("active"));
-          //  const el = Array.from(songEls).find(el => el.textContent === song.name);
-         //   el?.classList.add("active");
-           // audio.src = song.url;
-           // nowPlayingTitle.textContent = song.name;
-           // audio.play();
-          //  togglePlayBtn.innerHTML = "||";
-       // }
+
+
+        // function playIndex() {
+        //  const song = playlistQueue[currentIndex];
+        //   const songEls = document.querySelectorAll(".song");
+        //   songEls.forEach(el => el.classList.remove("active"));
+        //  const el = Array.from(songEls).find(el => el.textContent === song.name);
+        //   el?.classList.add("active");
+        // audio.src = song.url;
+        // nowPlayingTitle.textContent = song.name;
+        // audio.play();
+        //  togglePlayBtn.innerHTML = "||";
+        // }
 
         function prevSong() {
             if (currentIndex > 0) currentIndex--;
@@ -393,63 +393,63 @@
         }
 
         async function playWithCache(song) {
-  let blob = await getCachedSong(song.name);
+            let blob = await getCachedSong(song.name);
 
-  if (!blob) {
-    const res = await fetch(song.url);
-    blob = await res.blob();
-    await cacheSong(song.name, blob);
-    console.log("🎵 Downloaded & cached:", song.name);
-  } else {
-    console.log("🎶 Loaded from cache:", song.name);
-  }
+            if (!blob) {
+                const res = await fetch(song.url);
+                blob = await res.blob();
+                await cacheSong(song.name, blob);
+                console.log("🎵 Downloaded & cached:", song.name);
+            } else {
+                console.log("🎶 Loaded from cache:", song.name);
+            }
 
-  const blobUrl = URL.createObjectURL(blob);
-  audio.src = blobUrl;
-  nowPlayingTitle.textContent = song.name;
-  audio.play();
-  togglePlayBtn.innerHTML = "||";
-}
+            const blobUrl = URL.createObjectURL(blob);
+            audio.src = blobUrl;
+            nowPlayingTitle.textContent = song.name;
+            audio.play();
+            togglePlayBtn.innerHTML = "||";
+        }
 
 
 
         // ======================= IndexedDB Helper Functions ======================
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("ChillPillDB", 1);
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains("songs")) {
-        db.createObjectStore("songs");
-      }
-    };
-    request.onsuccess = (e) => resolve(e.target.result);
-    request.onerror = (e) => reject(e);
-  });
-}
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("ChillPillDB", 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains("songs")) {
+                        db.createObjectStore("songs");
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e);
+            });
+        }
 
-async function getCachedSong(name) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("songs", "readonly");
-    const store = tx.objectStore("songs");
-    const req = store.get(name);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e);
-  });
-}
+        async function getCachedSong(name) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction("songs", "readonly");
+                const store = tx.objectStore("songs");
+                const req = store.get(name);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = (e) => reject(e);
+            });
+        }
 
-async function cacheSong(name, blob) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("songs", "readwrite");
-    const store = tx.objectStore("songs");
-    const req = store.put(blob, name);
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e);
-  });
-}
-        
+        async function cacheSong(name, blob) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction("songs", "readwrite");
+                const store = tx.objectStore("songs");
+                const req = store.put(blob, name);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e);
+            });
+        }
+
 
         fetchSongs();
         togglePlayBtn.innerHTML = "▶";
