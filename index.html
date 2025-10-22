@@ -297,7 +297,10 @@
       canvas.height = window.innerHeight * 0.4;
     }
 
-    audio.addEventListener("play", startVisualizer);
+    audio.addEventListener("play", () => {
+      if (!audioCtx) startVisualizer();
+    });
+
 
     function drawVisualizer() {
       requestAnimationFrame(drawVisualizer);
