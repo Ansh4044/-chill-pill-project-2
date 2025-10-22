@@ -429,7 +429,10 @@
             const createBtn = document.querySelector("nav button:nth-child(2)");
             createBtn.disabled = selectedSongs.length === 0;
           } else {
-            startPlayback([song]);
+            const index = allSongs.findIndex(s => s.name === song.name);
+            playlistQueue = [...allSongs];
+            currentIndex = index;
+            playIndex();
           }
         });
         playlistEl.appendChild(d);
@@ -456,6 +459,7 @@
       nowPlayingTitle.textContent = song.name;
       audio.play();
       togglePlayBtn.innerHTML = "||";
+      if ('mediaSession' in navigator) updateMediaSession(song);
     }
 
     function openDB() {
@@ -494,6 +498,43 @@
 
     fetchSongs();
     togglePlayBtn.innerHTML = "▶";
+
+    if ('mediaSession' in navigator) {
+      function updateMediaSession(song) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: song.name,
+          artist: "Eagle",
+          album: "Custom Playlist",
+          artwork: [
+            { src: "favicon.jpg", sizes: "96x96", type: "image/jpeg" },
+            { src: "favicon.jpg", sizes: "192x192", type: "image/jpeg" },
+          ]
+        });
+
+        navigator.mediaSession.setActionHandler('play', () => {
+          audio.play();
+          togglePlayBtn.innerHTML = "||";
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          audio.pause();
+          togglePlayBtn.innerHTML = "▶";
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          prevSong();
+        });
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          nextSong();
+        });
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(() => {
+        console.log('✅ Service Worker registered for background caching');
+      }).catch(err => console.error('SW registration failed:', err));
+    }
+
   </script>
 </body>
+
 </html>
