@@ -204,6 +204,14 @@
       pointer-events: none;
       border-radius: 15px 15px 0 0;
     }
+
+    .song-count {
+      text-align: center;
+      color: #f4a261;
+      font-size: 13px;
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+    }
   </style>
 </head>
 
@@ -242,6 +250,10 @@
     <div class="duration-display" id="durationDisplay">00:00 / 00:00</div>
     <div id="nowPlayingTitle"></div>
   </div>
+  <br><br>
+  <div class="song-count">
+    Total Songs: <span id="totalSongs">0</span>
+  </div>
   <br><br><br><br><br><br><br><br>
 
   <canvas id="meteorCanvas"></canvas>
@@ -258,6 +270,15 @@
     const progressBar = document.getElementById("progressBar");
     const nowPlayingTitle = document.getElementById("nowPlayingTitle");
     const togglePlayBtn = document.getElementById("togglePlay");
+    function updateSongCount(count) {
+      const totalSpan = document.getElementById("totalSongs");
+      if (totalSpan) {
+        totalSpan.textContent = count;
+        totalSpan.style.transform = 'scale(1.03)';
+        setTimeout(() => totalSpan.style.transform = '', 160);
+      }
+    }
+
 
     let allSongs = [], currentIndex = -1, playlistQueue = [], selectionMode = false, selectedSongs = [];
 
@@ -373,9 +394,10 @@
     function toggleSelectionMode() {
       selectionMode = !selectionMode;
       selectedSongs = [];
-      document.querySelectorAll(".song").forEach(d => d.classList.remove("selected"));
+      
       const selectBtn = document.querySelector("nav button:nth-child(1)");
       const createBtn = document.querySelector("nav button:nth-child(2)");
+      document.querySelectorAll(".song").forEach(d => d.classList.remove("selected"));
       if (selectionMode) {
         selectBtn.classList.add("toggle-active");
         selectBtn.classList.remove("toggle-inactive");
@@ -383,18 +405,23 @@
       } else {
         selectBtn.classList.remove("toggle-active");
         selectBtn.classList.add("toggle-inactive");
-        createBtn.disabled = false;
+        createBtn.disabled = selectedSongs.length === 0;
       }
     }
 
     function createCustomPlaylist() {
-      if (selectedSongs.length) {
-        playlistQueue = [...selectedSongs];
-        selectionMode = false;
-        displaySongs(playlistQueue);
-        startPlayback(playlistQueue);
-      }
+      if (!selectedSongs.length) return;
+      playlistQueue = [...selectedSongs];
+      selectionMode = false;
+      const selectBtn = document.querySelector("nav button:nth-child(1)");
+      const createBtn = document.querySelector("nav button:nth-child(2)");
+      selectBtn.classList.remove("toggle-active");
+      selectBtn.classList.add("toggle-inactive");
+      createBtn.disabled = true;
+      displaySongs(playlistQueue);
+      startPlayback(playlistQueue);
     }
+
 
     function shuffleSongs() {
       const arr = playlistQueue.length ? playlistQueue : allSongs;
@@ -432,15 +459,18 @@
             const createBtn = document.querySelector("nav button:nth-child(2)");
             createBtn.disabled = selectedSongs.length === 0;
           } else {
-            const index = allSongs.findIndex(s => s.name === song.name);
-            playlistQueue = [...allSongs];
+            const index = (playlistQueue.length ? playlistQueue : allSongs)
+              .findIndex(s => s.name === song.name);
+            playlistQueue = playlistQueue.length ? playlistQueue : [...allSongs];
             currentIndex = index;
             playIndex();
           }
         });
         playlistEl.appendChild(d);
       });
+      updateSongCount(arr.length);
     }
+
 
     function filterSongs() {
       const q = document.getElementById("searchInput").value.toLowerCase();
@@ -448,21 +478,35 @@
     }
 
     async function playWithCache(song) {
-      let blob = await getCachedSong(song.name);
-      if (!blob) {
-        const res = await fetch(song.url);
-        blob = await res.blob();
-        await cacheSong(song.name, blob);
-        console.log("🎵 Downloaded & cached:", song.name);
-      } else {
-        console.log("🎶 Loaded from cache:", song.name);
+      try {
+        let blob = await getCachedSong(song.name);
+        if (!blob) {
+          const res = await fetch(song.url);
+          blob = await res.blob();
+          await cacheSong(song.name, blob);
+          await enforceCacheLimit();
+          console.log('Downloaded & cached', song.name);
+        } else {
+          console.log('Loaded from cache', song.name);
+        }
+
+        if (audio._lastBlobUrl) URL.revokeObjectURL(audio._lastBlobUrl);
+        const blobUrl = URL.createObjectURL(blob);
+        audio._lastBlobUrl = blobUrl;
+
+        audio.src = blobUrl;
+        nowPlayingTitle.textContent = song.name;
+        await audio.play();
+        togglePlayBtn.innerHTML = '||';
+        if ('mediaSession' in navigator) updateMediaSession(song);
+
+      } catch (err) {
+        if (err.name === "AbortError" || err.message.includes("aborted")) {
+          console.log("Fetch aborted (user changed song, no problem).");
+        } else {
+          console.error("Error playing song:", err);
+        }
       }
-      const blobUrl = URL.createObjectURL(blob);
-      audio.src = blobUrl;
-      nowPlayingTitle.textContent = song.name;
-      audio.play();
-      togglePlayBtn.innerHTML = "||";
-      if ('mediaSession' in navigator) updateMediaSession(song);
     }
 
     function openDB() {
