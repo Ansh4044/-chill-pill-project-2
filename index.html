@@ -394,7 +394,7 @@
     function toggleSelectionMode() {
       selectionMode = !selectionMode;
       selectedSongs = [];
-      
+
       const selectBtn = document.querySelector("nav button:nth-child(1)");
       const createBtn = document.querySelector("nav button:nth-child(2)");
       document.querySelectorAll(".song").forEach(d => d.classList.remove("selected"));
@@ -450,22 +450,29 @@
         const d = document.createElement("div");
         d.className = "song";
         d.textContent = song.name;
-        d.addEventListener("click", () => {
+        d.addEventListener("click", async () => {
           if (selectionMode) {
             d.classList.toggle("selected");
             const idx = selectedSongs.findIndex(s => s.name === song.name);
             if (idx > -1) selectedSongs.splice(idx, 1);
             else selectedSongs.push(song);
-            const createBtn = document.querySelector("nav button:nth-child(2)");
-            createBtn.disabled = selectedSongs.length === 0;
-          } else {
-            const index = (playlistQueue.length ? playlistQueue : allSongs)
-              .findIndex(s => s.name === song.name);
-            playlistQueue = playlistQueue.length ? playlistQueue : [...allSongs];
-            currentIndex = index;
-            playIndex();
+            document.querySelector("nav button:nth-child(2)").disabled = selectedSongs.length === 0;
+            return;
           }
+          try {
+            await audio.play();  
+          } catch (e) {
+            
+          }
+
+          const index = (playlistQueue.length ? playlistQueue : allSongs)
+            .findIndex(s => s.name === song.name);
+
+          playlistQueue = playlistQueue.length ? playlistQueue : [...allSongs];
+          currentIndex = index;
+          playIndex();
         });
+
         playlistEl.appendChild(d);
       });
       updateSongCount(arr.length);
