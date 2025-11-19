@@ -484,7 +484,6 @@
           const res = await fetch(song.url);
           blob = await res.blob();
           await cacheSong(song.name, blob);
-          await enforceCacheLimit();
           console.log('Downloaded & cached', song.name);
         } else {
           console.log('Loaded from cache', song.name);
