@@ -120,22 +120,25 @@
   <div id="progressText"></div>
 
   <script>
-    const supabaseUrl = "https://ihsoadrlzvxligjwujgp.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imloc29hZHJsenZ4bGlnand1amdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTE0MjAsImV4cCI6MjA2Njg2NzQyMH0.npl9PRxqUcFtQaRZY9V0mg_3B-cVq6nOpvNrOyetsXI";
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
+    const SUPABASE_URL = "https://ihsoadrlzvxligjwujgp.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imloc29hZHJsenZ4bGlnand1amdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTE0MjAsImV4cCI6MjA2Njg2NzQyMH0.npl9PRxqUcFtQaRZY9V0mg_3B-cVq6nOpvNrOyetsXI";
+    const supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
     const uploadInput = document.getElementById("uploadInput");
     const dropzone = document.getElementById("dropzone");
     const progressText = document.getElementById("progressText");
     const progressBar = document.getElementById("progressBar");
     const progressBarContainer = document.getElementById("progressBarContainer");
-
     dropzone.addEventListener("dragover", e => {
       e.preventDefault();
       dropzone.classList.add("dragover");
     });
 
-    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+    dropzone.addEventListener("dragleave", () =>
+      dropzone.classList.remove("dragover")
+    );
 
     dropzone.addEventListener("drop", e => {
       e.preventDefault();
@@ -143,117 +146,147 @@
       handleFiles(e.dataTransfer.files);
     });
 
-    uploadInput.addEventListener("change", e => handleFiles(e.target.files));
-
+    uploadInput.addEventListener("change", e =>
+      handleFiles(e.target.files)
+    );
     async function handleFiles(fileList) {
       const files = Array.from(fileList);
       let messageLog = "";
+
       const validFiles = files.filter(file => {
         if (file.type !== "audio/mpeg") {
-          messageLog = `\u274C ${file.name} is not an .mp3 file.\n`;
+          messageLog += `❌ ${file.name} is not an MP3 file\n`;
           return false;
         }
         if (file.size > 20 * 1024 * 1024) {
-          messageLog = `\u274C ${file.name} is larger than 20MB.\n`;
+          messageLog += `❌ ${file.name} is larger than 20MB\n`;
           return false;
         }
         return true;
       });
-      progressText.textContent = messageLog;
-      if (validFiles.length > 0) uploadFiles(validFiles);
-    }
 
+      progressText.textContent = messageLog;
+      if (validFiles.length) uploadFiles(validFiles);
+    }
     async function uploadFiles(files) {
-      const total = files.length;
-      let uploaded = 0;
       progressBarContainer.style.display = "block";
       progressBar.style.width = "0%";
+      const { data: existingFiles, error } =
+        await supabaseClient.storage.from("songs").list();
+
+      if (error) {
+        progressText.textContent = "❌ Failed to read storage";
+        return;
+      }
+
+      const existingNames = existingFiles.map(f => f.name);
+
+      let uploaded = 0;
+      const total = files.length;
 
       for (const file of files) {
-        const { data: existing, error: listError } = await supabase.storage.from("songs").list();
-        if (listError) {
-          progressText.textContent = "Error fetching file list.";
-          return;
-        }
-        if (existing.some(f => f.name === file.name)) {
-          progressText.textContent += `\u26A0\uFE0F File '${file.name}' already exists.\n`;
+        if (existingNames.includes(file.name)) {
+          progressText.textContent += `⚠️ ${file.name} already exists\n`;
+          uploaded++;
           continue;
         }
 
-        progressText.textContent = `${uploaded + 1}/${total} files uploading...\n`;
+        progressText.textContent =
+          `Uploading ${uploaded + 1} / ${total}`;
 
-        const { error } = await supabase.storage.from("songs").upload(file.name, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        const { error: uploadError } =
+          await supabaseClient.storage
+            .from("songs")
+            .upload(file.name, file, {
+              cacheControl: "3600",
+              upsert: false
+            });
 
-        if (error) {
-          progressText.textContent += `\u274C Failed to upload ${file.name}: ${error.message}\n`;
-          continue;
+        if (uploadError) {
+          progressText.textContent +=
+            `❌ Failed: ${file.name}\n`;
         }
 
         uploaded++;
-        const percent = Math.round((uploaded / total) * 100);
-        progressBar.style.width = `${percent}%`;
-
-        await new Promise(res => setTimeout(res, 300));
+        progressBar.style.width =
+          Math.round((uploaded / total) * 100) + "%";
       }
 
-      progressText.textContent = `\n Upload complete!`;
+      progressText.textContent = "✅ Upload complete!";
       setTimeout(() => {
         progressBarContainer.style.display = "none";
         progressBar.style.width = "0%";
       }, 1500);
     }
 
-    const canvas = document.getElementById("meteorCanvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
 
-    let meteors = [];
-    function createMeteor() {
-      return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * -canvas.height,
-        length: Math.random() * 80 + 20,
-        speed: Math.random() * 10 + 6,
-        angle: Math.PI / 4,
-        opacity: Math.random() * 0.5 + 0.3,
-      };
-    }
-
-    function drawMeteor(m) {
-      ctx.beginPath();
-      ctx.moveTo(m.x, m.y);
-      ctx.lineTo(m.x - m.length * Math.cos(m.angle), m.y - m.length * Math.sin(m.angle));
-      ctx.strokeStyle = `rgba(255, 255, 255, ${m.opacity})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    function updateMeteor(m) {
-      m.x += m.speed * Math.cos(m.angle);
-      m.y += m.speed * Math.sin(m.angle);
-    }
-
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (meteors.length < 15 && Math.random() < 0.2) meteors.push(createMeteor());
-      meteors.forEach((m, i) => {
-        updateMeteor(m);
-        drawMeteor(m);
-        if (m.x > canvas.width || m.y > canvas.height) meteors.splice(i, 1);
-      });
-      requestAnimationFrame(animate);
-    }
-
-    animate();
-    window.addEventListener("resize", () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    });
   </script>
+
+  <script>
+  const canvas = document.getElementById("meteorCanvas");
+  const ctx = canvas.getContext("2d");
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth * 1.5;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+
+  let meteors = [];
+
+  function createMeteor() {
+    return {
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height,
+      length: Math.random() * 80 + 20,
+      speed: Math.random() * 10 + 6,
+      angle: Math.PI / 4,
+      opacity: Math.random() * 0.5 + 0.3
+    };
+  }
+
+  function drawMeteor(m) {
+    ctx.beginPath();
+    ctx.moveTo(m.x, m.y);
+    ctx.lineTo(
+      m.x - m.length * Math.cos(m.angle),
+      m.y - m.length * Math.sin(m.angle)
+    );
+    ctx.strokeStyle = `rgba(255,255,255,${m.opacity})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function updateMeteor(m) {
+    m.x += m.speed * Math.cos(m.angle);
+    m.y += m.speed * Math.sin(m.angle);
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (meteors.length < 15 && Math.random() < 0.25) {
+      meteors.push(createMeteor());
+    }
+
+    for (let i = meteors.length - 1; i >= 0; i--) {
+      const m = meteors[i];
+      updateMeteor(m);
+      drawMeteor(m);
+
+      if (m.x > canvas.width || m.y > canvas.height) {
+        meteors.splice(i, 1);
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  window.addEventListener("resize", resizeCanvas);
+</script>
+
 </body>
 
 </html>
