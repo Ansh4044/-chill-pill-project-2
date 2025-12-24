@@ -212,6 +212,58 @@
       margin-bottom: 15px;
       transition: all 0.3s ease;
     }
+
+    #volumeSlider {
+      -webkit-appearance: none;
+      width: 100px;
+      height: 6px;
+      background: #555;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    /* Track */
+    #volumeSlider::-webkit-slider-runnable-track {
+      height: 6px;
+      background: #555;
+      border-radius: 5px;
+    }
+
+    /* Thumb */
+    #volumeSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #ffb703;
+      border-radius: 50%;
+      margin-top: -4px;
+      box-shadow: 0 0 10px #ffb703;
+      cursor: pointer;
+    }
+
+    #volumeSlider::-moz-range-track {
+      height: 6px;
+      background: #555;
+      border-radius: 5px;
+    }
+
+    #volumeSlider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: #ffb703;
+      border-radius: 50%;
+      border: none;
+      box-shadow: 0 0 10px #ffb703;
+      cursor: pointer;
+    }
+
+    #volumeSlider {
+      background: linear-gradient(to right,
+          #ffb703 0%,
+          #ffb703 50%,
+          #555 50%,
+          #555 100%);
+    }
   </style>
 </head>
 
@@ -241,11 +293,17 @@
     <div class="progress-container" onclick="setProgress(event)">
       <div class="progress-bar" id="progressBar"></div>
     </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <span id="volumeIcon">🔊</span>
+      <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+    </div>
+
     <div class="controls-buttons">
       <button onclick="prevSong()">⏮</button>
       <button id="togglePlay" onclick="toggleAudio()">▶</button>
       <button onclick="nextSong()">⏭</button>
       <canvas id="visualizerCanvas"></canvas>
+
     </div>
     <div class="duration-display" id="durationDisplay">00:00 / 00:00</div>
     <div id="nowPlayingTitle"></div>
@@ -259,6 +317,18 @@
   <canvas id="meteorCanvas"></canvas>
 
   <script>
+
+    const volumeIcon = document.getElementById("volumeIcon");
+
+    volumeSlider.addEventListener("input", () => {
+      audio.volume = volumeSlider.value;
+
+      if (volumeSlider.value == 0) volumeIcon.textContent = "🔇";
+      else if (volumeSlider.value < 0.4) volumeIcon.textContent = "🔈";
+      else if (volumeSlider.value < 0.7) volumeIcon.textContent = "🔉";
+      else volumeIcon.textContent = "🔊";
+    });
+
     const SUPABASE_URL = "https://ihsoadrlzvxligjwujgp.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imloc29hZHJsenZ4bGlnand1amdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTE0MjAsImV4cCI6MjA2Njg2NzQyMH0.npl9PRxqUcFtQaRZY9V0mg_3B-cVq6nOpvNrOyetsXI";
     const { createClient } = supabase;
@@ -394,7 +464,7 @@
     function toggleSelectionMode() {
       selectionMode = !selectionMode;
       selectedSongs = [];
-      
+
       const selectBtn = document.querySelector("nav button:nth-child(1)");
       const createBtn = document.querySelector("nav button:nth-child(2)");
       document.querySelectorAll(".song").forEach(d => d.classList.remove("selected"));

@@ -155,11 +155,11 @@
 
       const validFiles = files.filter(file => {
         if (file.type !== "audio/mpeg") {
-          messageLog += `❌ ${file.name} is not an MP3 file\n`;
+          messageLog += `${file.name} is not an MP3 file\n`;
           return false;
         }
         if (file.size > 20 * 1024 * 1024) {
-          messageLog += `❌ ${file.name} is larger than 20MB\n`;
+          messageLog += `${file.name} is larger than 20MB\n`;
           return false;
         }
         return true;
@@ -175,7 +175,7 @@
         await supabaseClient.storage.from("songs").list();
 
       if (error) {
-        progressText.textContent = "❌ Failed to read storage";
+        progressText.textContent = "Failed to read storage";
         return;
       }
 
@@ -186,7 +186,7 @@
 
       for (const file of files) {
         if (existingNames.includes(file.name)) {
-          progressText.textContent += `⚠️ ${file.name} already exists\n`;
+          progressText.textContent += `${file.name} already exists\n`;
           uploaded++;
           continue;
         }
@@ -204,7 +204,7 @@
 
         if (uploadError) {
           progressText.textContent +=
-            `❌ Failed: ${file.name}\n`;
+            `Failed: ${file.name}\n`;
         }
 
         uploaded++;
@@ -212,7 +212,7 @@
           Math.round((uploaded / total) * 100) + "%";
       }
 
-      progressText.textContent = "✅ Upload complete!";
+      progressText.textContent = "Upload complete!";
       setTimeout(() => {
         progressBarContainer.style.display = "none";
         progressBar.style.width = "0%";
