@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Chill Pill • Playlists</title>
+    <title>Playlists</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
@@ -276,19 +276,33 @@
             const checks = document.querySelectorAll(`.add-${pid} input:checked`);
             if (!checks.length) return;
 
-            const rows = [...checks].map(c => {
-                const song = allSongs.find(s => s.name === c.value);
-                return {
-                    playlist_id: pid,
-                    song_name: song.name,
-                    song_url: song.url,
-                    created_at: new Date().toISOString()
-                };
-            });
+            const rows = [...checks]
+                .map(c => {
+                    const song = allSongs.find(s => s.name === c.value);
+                    if (!song) return null;
+                    return {
+                        playlist_id: pid,
+                        song_name: song.name,
+                        song_url: song.url
+                    };
+                })
+                .filter(Boolean);
 
-            await sb.from("playlist_songs").insert(rows);
+            if (!rows.length) {
+                alert("Kuch gadbad hai songs me 🤡");
+                return;
+            }
+
+            const { error } = await sb.from("playlist_songs").insert(rows);
+            if (error) {
+                console.error(error);
+                alert(error.message);
+                return;
+            }
+
             loadPlaylists();
         }
+
 
 
         /* REMOVE SONGS */
