@@ -279,7 +279,7 @@
     <button onclick="createCustomPlaylist()" disabled>Create Playlist</button>
     <button onclick="shuffleSongs()">Shuffle All</button>
   </nav>
-  <center><a href="upload.html">Upload</a></center>
+  <center><a href="upload.html">Upload</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="playlist.html">Playlists</a></center>
 
   <div class="search-bar">
     <input type="text" id="searchInput" placeholder="Search songs..." oninput="filterSongs()">
@@ -514,6 +514,21 @@
       displaySongs(allSongs);
     }
 
+    const savedPlaylist = localStorage.getItem("activePlaylist");
+
+    if (savedPlaylist) {
+      const parsed = JSON.parse(savedPlaylist);
+
+      playlistQueue = parsed.songs;
+      currentIndex = 0;
+
+      nowPlayingTitle.textContent = parsed.name;
+      startPlayback(playlistQueue);
+
+      localStorage.removeItem("activePlaylist"); // optional
+    }
+
+
     function displaySongs(arr) {
       playlistEl.innerHTML = "";
       arr.forEach(song => {
@@ -643,6 +658,16 @@
         });
       }
     }
+
+    const active = JSON.parse(localStorage.getItem("activePlaylist"));
+
+    if (active) {
+      songQueue = active ? active.songs : allSongs;
+      playlistName.innerText = active.name;
+      renderSongList();
+      loadSong(0);
+    }
+
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {

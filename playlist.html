@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chill Pill • Playlists</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="favicon.jpg">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <style>
+        :root {
+            --gold: #ffb703;
+            --bg1: #1a120b;
+            --bg2: #3c2f2f;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(circle at top left, #3a2c1b, transparent 40%),
+                radial-gradient(circle at bottom right, #1f2a38, transparent 45%),
+                linear-gradient(135deg, #120c08, #2b1f1a, #0f172a);
+            color: #ffefcd;
+            overflow-x: hidden;
+        }
+
+
+        h1 {
+            text-align: center;
+            color: #f4a261;
+            margin-top: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        #newPlaylist {
+            color: #ffffff;
+            background: rgba(0, 0, 0, 0.123);
+            border: 1px solid rgb(255, 193, 21);
+        }
+
+        .new-playlist {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .new-playlist input {
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: none;
+            width: 220px;
+        }
+
+        .new-playlist button {
+            background: var(--gold);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .playlist-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 18px;
+            backdrop-filter: blur(6px);
+            animation: fadeUp .4s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            gap: 10px;
+        }
+
+        .playlist-info {
+            flex: 1;
+        }
+
+        .playlist-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--gold);
+        }
+
+        .song-count {
+            font-size: 13px;
+            opacity: .7;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .actions button {
+            border: none;
+            padding: 6px 10px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+
+        .add {
+            background: #22c55e
+        }
+
+        .edit {
+            background: #3b82f6
+        }
+
+        .delete {
+            background: #ef4444
+        }
+
+        .panel {
+            margin-top: 12px;
+            background: linear-gradient(180deg,
+                    rgba(0, 0, 0, 0.55),
+                    rgba(0, 0, 0, 0.35));
+            border-radius: 16px;
+            padding: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+
+        .hidden {
+            display: none
+        }
+
+        .panel input {
+            color: #ffffff;
+            background: rgba(0, 0, 0, 0.123);
+            border: 1px solid rgb(255, 193, 21);
+            padding: 10px 16px;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+
+
+        .song-list {
+            max-height: 220px;
+            overflow: auto;
+        }
+
+        .song {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 14px;
+        }
+
+        .song input {
+            transform: scale(1.2)
+        }
+
+        .panel button {
+            margin-top: 10px;
+            background: var(--gold);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* METEOR */
+        #meteorCanvas {
+            position: absolute;
+            inset: 0;
+            left: 0px;
+            pointer-events: none;
+            z-index: -1;
+            left: -800px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Playlist Manager</h1>
+
+    <div class="container">
+
+        <div class="new-playlist">
+            <input id="newPlaylist" placeholder="New playlist name">
+            <button onclick="createPlaylist()">Create</button>
+        </div>
+
+        <div id="playlistContainer"></div>
+
+    </div>
+
+    <canvas id="meteorCanvas"></canvas>
+
+    <script>
+        /* SUPABASE */
+        const SUPABASE_URL = "https://ihsoadrlzvxligjwujgp.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imloc29hZHJsenZ4bGlnand1amdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTE0MjAsImV4cCI6MjA2Njg2NzQyMH0.npl9PRxqUcFtQaRZY9V0mg_3B-cVq6nOpvNrOyetsXI";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let allSongs = [];
+
+        /* LOAD SONGS FROM BUCKET */
+        async function loadSongs() {
+            const { data } = await sb.storage.from("songs").list("", { limit: 200 });
+            allSongs = data.filter(f => f.name.endsWith(".mp3")).map(f => ({
+                name: f.name.replace(".mp3", ""),
+                url: `${SUPABASE_URL}/storage/v1/object/public/songs/${encodeURIComponent(f.name)}`
+            }));
+        }
+
+        /* CREATE PLAYLIST */
+        async function createPlaylist() {
+            const name = newPlaylist.value.trim();
+            if (!name) return alert("Naam daal bhai 🤦");
+            await sb.from("playlists").insert([{ name }]);
+            newPlaylist.value = "";
+            loadPlaylists();
+        }
+
+        /* DELETE PLAYLIST */
+        async function deletePlaylist(id) {
+            if (!confirm("Sach me delete? 💀")) return;
+            await sb.from("playlist_songs").delete().eq("playlist_id", id);
+            await sb.from("playlists").delete().eq("id", id);
+            loadPlaylists();
+        }
+
+        /* OPEN IN MAIN PLAYER */
+        function openInPlayer(name, songs) {
+            localStorage.setItem("activePlaylist", JSON.stringify({
+                name,
+                songs
+            }));
+            window.location.href = "index.html";
+        }
+
+
+        /* ADD SONGS */
+        async function addSongs(pid) {
+            const checks = document.querySelectorAll(`.add-${pid} input:checked`);
+            if (!checks.length) return;
+
+            const rows = [...checks].map(c => {
+                const song = allSongs.find(s => s.name === c.value);
+                return {
+                    playlist_id: pid,
+                    song_name: song.name,
+                    song_url: song.url,
+                    created_at: new Date().toISOString()
+                };
+            });
+
+            await sb.from("playlist_songs").insert(rows);
+            loadPlaylists();
+        }
+
+
+        /* REMOVE SONGS */
+        async function removeSongs(pid) {
+            const checks = document.querySelectorAll(`.edit-${pid} input:checked`);
+            const ids = [...checks].map(c => c.dataset.id);
+            if (!ids.length) return;
+            await sb.from("playlist_songs").delete().in("id", ids);
+            loadPlaylists();
+        }
+
+        /* LOAD PLAYLIST UI */
+        async function loadPlaylists() {
+            // Sab playlists fetch karo
+            const { data: pls } = await sb.from("playlists").select("*");
+            playlistContainer.innerHTML = "";
+
+            for (const p of pls) {
+                // Har playlist ke songs fetch karo
+                const { data } = await sb.from("playlist_songs").select("*").eq("playlist_id", p.id);
+                const songs = data || []; // agar null ya undefined aaye to empty array
+
+                // Available songs filter karo (jo already playlist me hai unko exclude)
+                const existingNames = songs.map(s => s.song_name);
+                const availableSongs = allSongs.filter(s => !existingNames.includes(s.name));
+
+                // Playlist card create karo
+                playlistContainer.innerHTML += `
+<div class="playlist-card">
+  <div class="playlist-header" onclick='openInPlayer("${p.name.replace(/"/g, "")}",${JSON.stringify(
+                    songs.map(s => ({ name: s.song_name, url: s.song_url }))
+                )})'>
+    <div class="playlist-info">
+      <div class="playlist-name">${p.name}</div>
+      <div class="song-count">${songs.length} songs</div>
+    </div>
+    <div class="actions" onclick="event.stopPropagation()">
+      <button class="add" onclick="toggle('add-${p.id}')">➕</button>
+      <button class="edit" onclick="toggle('edit-${p.id}')">✏</button>
+      <button class="delete" onclick="deletePlaylist('${p.id}')">🗑</button>
+    </div>
+  </div>
+
+  <!-- ADD SONG PANEL -->
+ <div class="panel hidden add-${p.id}">
+  <input placeholder="Search songs..." oninput="filter(this,'add-${p.id}')">
+  <div class="song-list">
+    ${availableSongs.length === 0 ?
+                        `<p style="opacity:.6">All songs already added 🎵</p>` :
+                        availableSongs.map((s, i) => `
+      <div class="song">
+        <input type="checkbox" value="${s.name}">
+        <span>${s.name}</span>
+      </div>`).join("")
+                    }
+  </div>
+  <button onclick="addSongs('${p.id}')">Add Selected</button>
+</div>
+
+
+  <!-- EDIT / REMOVE SONG PANEL -->
+  <div class="panel hidden edit-${p.id}">
+    <input placeholder="Search..." oninput="filter(this,'edit-${p.id}')">
+    <div class="song-list">
+      ${songs.map(s => `
+        <div class="song">
+          <input type="checkbox" data-id="${s.id}"> ${s.song_name}
+        </div>`).join("")}
+    </div>
+    <button onclick="removeSongs('${p.id}')">Delete Selected</button>
+  </div>
+</div>`;
+            }
+        }
+
+        /* HELPERS */
+        function toggle(cls) {
+            document.querySelectorAll("." + cls).forEach(e => e.classList.toggle("hidden"));
+        }
+        function filter(input, cls) {
+            const q = input.value.toLowerCase();
+            document.querySelectorAll(`.${cls} .song`).forEach(s => {
+                s.style.display = s.innerText.toLowerCase().includes(q) ? "" : "none";
+            });
+        }
+
+        /* METEOR */
+        const canvas = document.getElementById("meteorCanvas");
+        const ctx = canvas.getContext("2d");
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 1.5;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+
+        let meteors = [];
+
+        function createMeteor() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * -canvas.height,
+                length: Math.random() * 100 + 20,
+                speed: Math.random() * 30 + 6,
+                angle: Math.PI / 4,
+                opacity: Math.random() * 0.5 + 0.3
+            };
+        }
+
+        function drawMeteor(m) {
+            ctx.beginPath();
+            ctx.moveTo(m.x, m.y);
+            ctx.lineTo(
+                m.x - m.length * Math.cos(m.angle),
+                m.y - m.length * Math.sin(m.angle)
+            );
+            ctx.strokeStyle = `rgba(255,255,255,${m.opacity})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function updateMeteor(m) {
+            m.x += m.speed * Math.cos(m.angle);
+            m.y += m.speed * Math.sin(m.angle);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (meteors.length < 15 && Math.random() < 0.25) {
+                meteors.push(createMeteor());
+            }
+
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const m = meteors[i];
+                updateMeteor(m);
+                drawMeteor(m);
+
+                if (m.x > canvas.width || m.y > canvas.height) {
+                    meteors.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener("resize", resizeCanvas);
+
+        /* INIT */
+        (async () => {
+            await loadSongs();
+            loadPlaylists();
+        })();
+    </script>
+
+</body>
+
+</html>
