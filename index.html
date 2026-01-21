@@ -6,7 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>#chill-pill-project-2</title>
   <link rel="shortcut icon" href="favicon.jpg" type="image/x-icon">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // server pe jo URL mila, wahi dal do
+    const socket = io("https://music-4uo3.onrender.com");
+
+    // apne server URL
+  </script>
+
   <style>
     body {
       background: linear-gradient(135deg, #1a120b, #3c2f2f);
@@ -264,6 +273,59 @@
           #555 50%,
           #555 100%);
     }
+
+    #syncBtn {
+      position: relative;
+      top: 30px;
+      margin-bottom: 30px;
+      z-index: 10000;
+      background: #ffb703;
+      border: none;
+      color: #1a120b;
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .sync-btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      background: #222;
+      color: #aaa;
+      transition: all 0.3s ease;
+    }
+
+    /* 🔥 Sync ON state */
+    .sync-on {
+      background: linear-gradient(135deg, #00f2ff, #00ff88);
+      color: #000;
+      box-shadow: 0 0 12px rgba(0, 255, 200, 0.8);
+      animation: pulse 1.5s infinite;
+    }
+
+    /* 💓 Pulse animation */
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 10px rgba(0, 255, 200, 0.6);
+      }
+
+      50% {
+        box-shadow: 0 0 22px rgba(0, 255, 200, 1);
+      }
+
+      100% {
+        box-shadow: 0 0 10px rgba(0, 255, 200, 0.6);
+      }
+    }
+
+    /* 👻 Optional hover flex */
+    .sync-btn:hover {
+      transform: scale(1.05);
+    }
   </style>
 </head>
 
@@ -279,11 +341,28 @@
     <button onclick="createCustomPlaylist()" disabled>Create Playlist</button>
     <button onclick="shuffleSongs()">Shuffle All</button>
   </nav>
-  <center><a href="upload.html">Upload</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="playlist.html">Playlists</a></center>
+  <center><a href="upload.html">Upload</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="playlist.html">Playlists</a><br><button
+      id="syncBtn">Sync OFF</button>
+  </center>
 
   <div class="search-bar">
     <input type="text" id="searchInput" placeholder="Search songs..." oninput="filterSongs()">
   </div>
+  <div id="logBox" style="
+    position: fixed;
+  bottom: 25px;
+  right: 4px;
+  width: 95px;
+  max-height: 211px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.0);
+  color: #ffffff;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 3px;
+  border-radius: 8px;
+  z-index: 999999999;
+"></div>
 
   <div id="playlist" class="playlist">Loading songs...</div>
 
@@ -317,6 +396,70 @@
   <canvas id="meteorCanvas"></canvas>
 
   <script>
+    const logBox = document.getElementById("logBox");
+
+    function logMessage(msg, type = "info") {
+      if (!logBox) return;
+
+      const p = document.createElement("div");
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+
+      // Optional colors
+      if (type === "error") p.style.color = "#ff4d4d";
+      else if (type === "warn") p.style.color = "#ffcc00";
+      else p.style.color = "#a0ffa0";
+
+      logBox.appendChild(p);
+      logBox.scrollTop = logBox.scrollHeight; // scroll down automatically
+    }
+
+    socket.on("log", (msg) => {
+      logMessage(msg, "info");
+    });
+
+
+    let syncMode = false;
+    let isRemoteAction = false;
+
+    const syncBtn = document.getElementById("syncBtn");
+
+    syncBtn.onclick = async () => {
+      syncMode = !syncMode;
+
+      if (syncMode) {
+        syncBtn.textContent = "🟢 Sync ON";
+        syncBtn.classList.add("sync-on");   // 🔥 animation ON
+
+        // 🔹 latest state le server se
+        socket.emit("request_latest");
+      } else {
+        syncBtn.textContent = "Sync OFF";
+        syncBtn.classList.remove("sync-on"); // 🧊 animation OFF
+      }
+    };
+
+
+
+    // 🔹 When server sends the latest state
+    socket.on("sync", (data) => {
+      logMessage("SYNC IN →", data);
+      applyRemoteState(data);
+
+      // 🔹 If playlist_create, update playlistQueue and display only those songs
+      if (data.type === "playlist_create" && data.playlist) {
+        const newPlaylist = allSongs.filter(s => data.playlist.includes(s.name));
+        if (newPlaylist.length) {
+          playlistQueue = newPlaylist;
+          currentIndex = 0;
+          displaySongs(playlistQueue);
+          startPlayback(playlistQueue);
+        }
+      }
+    });
+
+
+
+
 
     const volumeIcon = document.getElementById("volumeIcon");
 
@@ -352,20 +495,29 @@
 
     let allSongs = [], currentIndex = -1, playlistQueue = [], selectionMode = false, selectedSongs = [];
 
-    function toggleAudio() {
+    function toggleAudio(remote = false) {
       if (audio.paused) {
         audio.play();
         togglePlayBtn.innerHTML = "||";
+        if (syncMode && !remote) {
+          emitSync("play", { index: currentIndex, time: audio.currentTime });
+        }
       } else {
         audio.pause();
         togglePlayBtn.innerHTML = "▶";
+        if (syncMode && !remote) {
+          emitSync("pause", { index: currentIndex, time: audio.currentTime });
+        }
       }
     }
+
+
 
     let audioCtx, analyser, dataArray, bufferLength;
     const canvas = document.getElementById('visualizerCanvas');
     const vCtx = canvas.getContext('2d');
     const body = document.body;
+
 
     function startVisualizer() {
       if (!audioCtx) {
@@ -428,11 +580,18 @@
       const ss = Math.floor(s % 60).toString().padStart(2, "0");
       return `${m}:${ss}`;
     }
-
     function setProgress(e) {
       const percent = e.offsetX / e.currentTarget.clientWidth;
-      audio.currentTime = percent * audio.duration;
+      const newTime = percent * audio.duration;
+      audio.currentTime = newTime;
+
+      if (syncMode && !isRemoteAction) {
+        emitSync("seek", { time: newTime }); // type automatically "seek"
+      }
     }
+
+
+
 
     function startPlayback(queue) {
       playlistQueue = queue;
@@ -440,14 +599,83 @@
       playIndex();
     }
 
-    function playIndex() {
+
+    function playIndex(remote = false) {
       const song = playlistQueue[currentIndex];
-      const songEls = document.querySelectorAll(".song");
-      songEls.forEach(el => el.classList.remove("active"));
-      const el = Array.from(songEls).find(el => el.textContent === song.name);
-      el?.classList.add("active");
       playWithCache(song);
+
+      // 🔹 ACTIVE CLASS SET
+      document.querySelectorAll(".song").forEach(d => {
+        if (d.textContent === song.name) d.classList.add("active");
+        else d.classList.remove("active");
+      });
+
+      if (syncMode && !remote) {
+        emitSync("song_change", { name: song.name, time: 0 });
+      }
     }
+
+
+
+
+
+    // 🔥 Emit events to other devices using song name
+    function emitSync(type, payload) {
+      if (!syncMode) return;
+      let data = { type, ...payload };
+
+      // Replace index with song name
+      if (type === "song_change" && payload.index !== undefined) {
+        const song = playlistQueue[payload.index];
+        data.songName = song.name;
+        delete data.index;
+      }
+
+      logMessage("SYNC OUT →", data);
+      socket.emit("sync", data);
+    }
+
+    // 🔥 Apply remote events using song name
+    function applyRemoteState(data) {
+      isRemoteAction = true;
+
+      // 🔹 PLAYLIST CREATE SYNC
+      if (data.type === "playlist_create" && data.playlist) {
+        // playlistQueue ko server se aayi list ke according set karo
+        playlistQueue = data.playlist.map(name => allSongs.find(s => s.name === name)).filter(Boolean);
+        currentIndex = 0;
+
+        displaySongs(playlistQueue);
+        startPlayback(playlistQueue);
+        isRemoteAction = false;
+        return;
+      }
+
+      // 🔹 SONG CHANGE / PLAY / PAUSE / SEEK
+      if (data.name !== undefined) {
+        const idx = playlistQueue.findIndex(s => s.name === data.name);
+        if (idx !== -1) {
+          currentIndex = idx;
+          playIndex(true);
+        }
+      }
+
+      if (data.time !== undefined) audio.currentTime = data.time;
+
+      if (data.type === "play") {
+        audio.play();
+        togglePlayBtn.innerHTML = "||";
+      } else if (data.type === "pause") {
+        audio.pause();
+        togglePlayBtn.innerHTML = "▶";
+      }
+
+      isRemoteAction = false;
+    }
+
+
+
+
 
     function prevSong() {
       if (currentIndex > 0) currentIndex--;
@@ -481,16 +709,49 @@
 
     function createCustomPlaylist() {
       if (!selectedSongs.length) return;
+
+      // 1️⃣ Local update
       playlistQueue = [...selectedSongs];
       selectionMode = false;
+
       const selectBtn = document.querySelector("nav button:nth-child(1)");
       const createBtn = document.querySelector("nav button:nth-child(2)");
       selectBtn.classList.remove("toggle-active");
       selectBtn.classList.add("toggle-inactive");
       createBtn.disabled = true;
+
+      // 2️⃣ Display only selected songs locally
       displaySongs(playlistQueue);
+
+      // 3️⃣ Start playback
       startPlayback(playlistQueue);
+
+      // 4️⃣ Emit sync event to other clients
+      if (syncMode) {
+        emitSync("playlist_create", {
+          playlist: selectedSongs.map(s => s.name)
+        });
+      }
     }
+
+    // 5️⃣ Receive playlist_create on remote clients
+    socket.on("sync", (data) => {
+      if (data.type === "playlist_create" && data.playlist) {
+        const newPlaylist = allSongs.filter(s => data.playlist.includes(s.name));
+        if (newPlaylist.length) {
+          playlistQueue = newPlaylist;
+          currentIndex = 0;
+
+          // Show only playlist songs
+          displaySongs(playlistQueue);
+          startPlayback(playlistQueue);
+        }
+      } else {
+        applyRemoteState(data); // play/pause/seek/song_change
+      }
+    });
+
+
 
 
     function shuffleSongs() {
@@ -531,30 +792,39 @@
 
     function displaySongs(arr) {
       playlistEl.innerHTML = "";
-      arr.forEach(song => {
+
+      arr.forEach((song, idx) => {
         const d = document.createElement("div");
         d.className = "song";
         d.textContent = song.name;
+
+        // 🔹 CURRENTLY PLAYING SONG BORDER
+        if (playlistQueue[currentIndex] && song.name === playlistQueue[currentIndex].name) {
+          d.classList.add("active");
+        }
+
         d.addEventListener("click", () => {
           if (selectionMode) {
             d.classList.toggle("selected");
-            const idx = selectedSongs.findIndex(s => s.name === song.name);
-            if (idx > -1) selectedSongs.splice(idx, 1);
+            const selIdx = selectedSongs.findIndex(s => s.name === song.name);
+            if (selIdx > -1) selectedSongs.splice(selIdx, 1);
             else selectedSongs.push(song);
             const createBtn = document.querySelector("nav button:nth-child(2)");
             createBtn.disabled = selectedSongs.length === 0;
           } else {
-            const index = (playlistQueue.length ? playlistQueue : allSongs)
-              .findIndex(s => s.name === song.name);
+            const index = (playlistQueue.length ? playlistQueue : allSongs).findIndex(s => s.name === song.name);
             playlistQueue = playlistQueue.length ? playlistQueue : [...allSongs];
             currentIndex = index;
             playIndex();
           }
         });
+
         playlistEl.appendChild(d);
       });
+
       updateSongCount(arr.length);
     }
+
 
 
     function filterSongs() {
@@ -569,9 +839,9 @@
           const res = await fetch(song.url);
           blob = await res.blob();
           await cacheSong(song.name, blob);
-          console.log('Downloaded & cached', song.name);
+          logMessage('Downloaded & cached', song.name);
         } else {
-          console.log('Loaded from cache', song.name);
+          logMessage('Loaded from cache', song.name);
         }
 
         if (audio._lastBlobUrl) URL.revokeObjectURL(audio._lastBlobUrl);
@@ -586,7 +856,7 @@
 
       } catch (err) {
         if (err.name === "AbortError" || err.message.includes("aborted")) {
-          console.log("Fetch aborted (user changed song, no problem).");
+          logMessage("Fetch aborted (user changed song, no problem).");
         } else {
           console.error("Error playing song:", err);
         }
@@ -671,9 +941,19 @@
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {
-        console.log('✅ Service Worker registered for background caching');
+        logMessage('✅ Service Worker registered for background caching');
       }).catch(err => console.error('SW registration failed:', err));
     }
+
+    socket.on("connect", () => {
+      logMessage("🔗 Connected to server with ID:", socket.id);
+    });
+
+    socket.on("sync", (data) => {
+      logMessage("SYNC IN →", data);
+      applyRemoteState(data);
+    });
+
 
   </script>
 </body>
